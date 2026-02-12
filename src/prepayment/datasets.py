@@ -76,7 +76,30 @@ def load_loan_panel(path: str | Path, *, nrows: int | None = None) -> pd.DataFra
     if "lnno" in loans.columns:
         loans["lnno"] = pd.to_numeric(loans["lnno"], errors="coerce").astype("Int64")
 
-    required = {"lnno", "year", "q", "sort_key", "rate_int", "amt_upb_pch", "amt_upb_endg", "mrtg_status"}
+    required_base = {"lnno", "rate_int", "amt_upb_pch", "amt_upb_endg", "mrtg_status"}
+    missing_base = sorted(required_base - set(loans.columns))
+    if missing_base:
+        raise ValueError(f"Missing required columns in loan data: {missing_base}")
+
+    has_yqs = {"year", "q", "sort_key"}.issubset(loans.columns)
+    if not has_yqs:
+        if "quarter" not in loans.columns:
+            raise ValueError("Loan data must include either (year, q, sort_key) or quarter")
+
+        quarter_dt = pd.to_datetime(loans["quarter"], errors="coerce", format="%m/%d/%y")
+        if quarter_dt.isna().mean() > 0.05:
+            quarter_dt = pd.to_datetime(loans["quarter"], errors="coerce", format="%m/%d/%Y")
+        if quarter_dt.isna().any():
+            quarter_dt = pd.to_datetime(loans["quarter"], errors="coerce", format="mixed")
+
+        if quarter_dt.notna().sum() == 0:
+            raise ValueError("Unable to parse quarter column as dates")
+
+        loans["year"] = quarter_dt.dt.year.astype("Int64")
+        loans["q"] = quarter_dt.dt.quarter.astype("Int64")
+        loans["sort_key"] = (loans["year"] * 10 + loans["q"]).astype("Int64")
+
+    required = {"year", "q", "sort_key"}
     missing = sorted(required - set(loans.columns))
     if missing:
         raise ValueError(f"Missing required columns in loan data: {missing}")
