@@ -1,0 +1,30 @@
+[project]
+name = "prepayment-replication"
+version = "0.1.0"
+description = "Replicate Kang & Zenios (1992) prepayment factor model on provided Freddie Mac-derived data."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "matplotlib>=3.10.0",
+  "numpy>=2.2.0",
+  "pandas>=2.2.0",
+  "scikit-learn>=1.7.0",
+  "scipy>=1.15.0",
+  "seaborn>=0.13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/prepayment"]
