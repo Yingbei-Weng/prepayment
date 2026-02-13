@@ -17,6 +17,10 @@ class PrepayDefinition:
 
 def add_quarter_end_date(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
+    if "quarter" in df.columns and pd.api.types.is_datetime64_any_dtype(df["quarter"]) and df["quarter"].notna().any():
+        df["period_end"] = df["quarter"]
+        return df
+
     end_month = (df["q"].astype(int) * 3).astype(int)
     df["period_end"] = pd.to_datetime(
         {"year": df["year"].astype(int), "month": end_month, "day": 1}, errors="coerce"
@@ -26,6 +30,13 @@ def add_quarter_end_date(df: pd.DataFrame) -> pd.DataFrame:
 
 def add_loan_age_quarters(df: pd.DataFrame) -> pd.DataFrame:
     df = add_quarter_end_date(df)
+    if "loan_age_quarters" in df.columns:
+        age_quarters = pd.to_numeric(df["loan_age_quarters"], errors="coerce").astype("Int64")
+        df = df.copy()
+        df["age_quarters"] = age_quarters
+        df["age_months"] = (age_quarters * 3).astype("Int64")
+        return df
+
     if "dt_fund" not in df.columns:
         raise ValueError("Expected dt_fund to compute loan age")
 
@@ -48,8 +59,17 @@ def add_beginning_upb(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_market_rate_and_incentive(df: pd.DataFrame, rates: pd.DataFrame) -> pd.DataFrame:
-    df = df.merge(rates, how="left", on="period")
-    df = df.copy()
+    if "market_rate" in df.columns:
+        work = df.copy()
+        work["market_rate"] = pd.to_numeric(work["market_rate"], errors="coerce")
+        merged = work.merge(rates, how="left", on="period", suffixes=("", "_rates"))
+        if "market_rate_rates" in merged.columns:
+            merged["market_rate"] = merged["market_rate"].fillna(merged["market_rate_rates"])
+            merged = merged.drop(columns=["market_rate_rates"])
+        df = merged
+    else:
+        df = df.merge(rates, how="left", on="period")
+        df = df.copy()
     df["c_over_r"] = df["rate_int"] / df["market_rate"]
     return df
 
@@ -148,7 +168,14 @@ def prepare_loan_quarterly_data(
     df = add_beginning_upb(df)
     df = add_loan_age_quarters(df)
     df = add_market_rate_and_incentive(df, rates)
-    df = add_prepayment_flags(df, prepay_definition)
+    if "is_prepaid" in df.columns:
+        df = df.copy()
+        is_prepay = pd.to_numeric(df["is_prepaid"], errors="coerce").fillna(0.0).astype(int).eq(1)
+        liq_upb = pd.to_numeric(df.get("liq_upb_amt"), errors="coerce")
+        df["is_prepay"] = is_prepay.astype(bool)
+        df["prepay_upb"] = np.where(df["is_prepay"], liq_upb.fillna(df["begin_upb"]), 0.0)
+    else:
+        df = add_prepayment_flags(df, prepay_definition)
 
     df = df.copy()
     df["season"] = df["q"].astype("Int64")

@@ -22,10 +22,10 @@ from .plots import save_aging_plot, save_refinancing_plot, save_seasonality_plot
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Replicate Kang & Zenios (1992) factor-style prepayment model.")
-    p.add_argument("--data", required=True, help="Path to data.csv")
+    p.add_argument("--data", required=True, help="Path to loan panel CSV (e.g., data.csv or data_new.csv)")
     p.add_argument("--rates", required=True, help="Path to 10y_yahoo_quarter_avg.csv")
     p.add_argument("--out", default="outputs", help="Output directory")
-    p.add_argument("--sample-rows", type=int, default=None, help="Load only the first N rows of data.csv")
+    p.add_argument("--sample-rows", type=int, default=None, help="Load only the first N rows of the loan panel CSV")
 
     p.add_argument("--seasonality-age-min", type=int, default=4, help="Min age (quarters) for seasonality fit")
     p.add_argument("--seasonality-age-max", type=int, default=40, help="Max age (quarters) for seasonality fit")

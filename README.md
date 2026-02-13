@@ -18,6 +18,14 @@ uv pip install -e .
 uv run python -m prepayment.replicate --data data.csv --rates 10y_yahoo_quarter_avg.csv --out outputs
 ```
 
+If the loan panel includes an `is_prepaid` column (e.g., `data_new.csv`), the pipeline uses it directly instead of re-deriving a prepayment flag:
+
+```bash
+uv run python -m prepayment.replicate --data data_new.csv --rates 10y_yahoo_quarter_avg.csv --out outputs
+```
+
+`data_new.csv` also includes `loan_age_quarters` and `market_rate`; when present, the pipeline uses those as the age axis and market rate (and only falls back to `--rates` if `market_rate` is missing).
+
 3. Run tests:
 
 ```bash

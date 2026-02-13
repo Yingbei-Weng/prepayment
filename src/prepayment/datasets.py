@@ -44,7 +44,7 @@ def load_quarterly_rates(path: str | Path) -> RateSeries:
 def load_loan_panel(path: str | Path, *, nrows: int | None = None) -> pd.DataFrame:
     loans = pd.read_csv(path, na_values=["", " "], nrows=nrows, low_memory=False)
 
-    date_cols = ["dt_fund", "dt_io_end", "dt_mty", "dt_sold", "liq_dte"]
+    date_cols = ["dt_fund", "dt_io_end", "dt_mty", "dt_sold", "liq_dte", "quarter"]
     for col in date_cols:
         if col in loans.columns:
             loans[col] = pd.to_datetime(loans[col], errors="coerce", format="mixed")
@@ -64,6 +64,8 @@ def load_loan_panel(path: str | Path, *, nrows: int | None = None) -> pd.DataFra
         "cnt_yld_maint",
         "Sales_Price",
         "credit_loss",
+        "market_rate",
+        "is_prepaid",
         "year",
         "q",
         "sort_key",
@@ -75,6 +77,23 @@ def load_loan_panel(path: str | Path, *, nrows: int | None = None) -> pd.DataFra
 
     if "lnno" in loans.columns:
         loans["lnno"] = pd.to_numeric(loans["lnno"], errors="coerce").astype("Int64")
+
+    if "year" not in loans.columns or "q" not in loans.columns:
+        if "quarter" in loans.columns:
+            quarter_dt = loans["quarter"]
+            if pd.api.types.is_datetime64_any_dtype(quarter_dt) and quarter_dt.notna().any():
+                loans["year"] = quarter_dt.dt.year
+                loans["q"] = quarter_dt.dt.quarter
+            else:
+                quarter_str = quarter_dt.astype(str).str.strip().str.lower()
+                extracted = quarter_str.str.extract(r"^y?(?P<yy>\\d{2,4})q(?P<q>[1-4])$")
+                yy = pd.to_numeric(extracted["yy"], errors="coerce")
+                year = np.where(yy < 100, 2000 + yy, yy)
+                loans["year"] = pd.to_numeric(year, errors="coerce")
+                loans["q"] = pd.to_numeric(extracted["q"], errors="coerce")
+
+    if "sort_key" not in loans.columns and {"year", "q"} <= set(loans.columns):
+        loans["sort_key"] = loans["year"] * 10 + loans["q"]
 
     required = {"lnno", "year", "q", "sort_key", "rate_int", "amt_upb_pch", "amt_upb_endg", "mrtg_status"}
     missing = sorted(required - set(loans.columns))
