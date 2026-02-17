@@ -71,3 +71,22 @@ def save_aging_plot(
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
+
+
+def save_roc_plot(fpr: np.ndarray, tpr: np.ndarray, *, out_path: str | Path, title: str, auc: float | None = None) -> None:
+    fpr = np.asarray(fpr, dtype=float)
+    tpr = np.asarray(tpr, dtype=float)
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+    label = "ROC curve" if auc is None or not np.isfinite(auc) else f"ROC curve (AUC={auc:.3f})"
+    ax.plot(fpr, tpr, color="#4C78A8", linewidth=2, label=label)
+    ax.plot([0, 1], [0, 1], "k--", linewidth=1, alpha=0.5)
+    ax.set_title(title)
+    ax.set_xlabel("False positive rate")
+    ax.set_ylabel("True positive rate")
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.legend(loc="lower right", frameon=False)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
